@@ -2,6 +2,7 @@ import heapq
 import sys
 from termcolor import colored
 import math
+import numpy as np
 
 class PriorityQueue:
   def __init__(self):
@@ -19,9 +20,9 @@ class PriorityQueue:
 
 class MapTraffic:
   def __init__(self, atlas, walls, material):
-    self.n = len(A)
-    self.m = len(A[0])
-    self.atlas = A
+    self.n = len(atlas)
+    self.m = len(atlas[0])
+    self.atlas = atlas
     self.walls = walls
     self.material = material
 
@@ -48,15 +49,24 @@ class MapTraffic:
     for i in range(self.n):
       for j in range(self.m):
         if (i,j) in path:
-          print("x",end="")
+          if (i,j) in self.material:
+            if show_weight:
+                print("$",end="\t")
+            else:
+                print("$", end="")
+          else:
+            if show_weight:
+                print("+",end="\t")
+            else:
+                print("+", end="")        
         elif (i, j) in self.material:
             if show_weight:
-            print("!", end="\t")
-          else:
-            print("!", end="")
+              print("!", end="\t")
+            else:
+              print("!", end="")
         elif self.passable((i,j)):
           if show_weight:
-            print(f"{self.A[i][j]}",end="\t")
+            print("__",end="\t")
           else:
             print("_", end="")
         else:
@@ -68,18 +78,22 @@ class MapTraffic:
 
 
 class SearchAlg:
-  def __init__(self, grid, start, goal):
+  def __init__(self, grid, start, energy):
     self.grid = grid
     self.start = start
-    self.goal = goal
+    self.goal = (grid.n - 1, grid.m - 1)
+    self.energy = energy
+    self.lastEnergy = 0
     self.came_from = {}
 
   def trace_path(self):
-    curr =  self.goal
+    cur_node =  self.goal
+    cur_energy = self.lastEnergy
     path = []
-    while curr != self.start:
-      path.append(curr)
-      curr = self.came_from[curr]
+    while cur_node != self.start:
+      path.append(cur_node)
+      curr = self.came_from[(cur_node, cur_energy)]
+      cur_node, cur_energy = curr
     
     path.append(self.start)
     path.reverse()
@@ -140,51 +154,47 @@ class SearchAlg:
     print(colored("Can not find path.", "red"))
     return False
   
-  def DFS(self,):
-    stack=[self.start]
-    check = [[0 for x in range(self.grid.m)] for y in range(self.grid.n)] 
-    for i in range(self.grid.m):
-      for j in range(self.grid.n) :
-        check[j][i]=False
-    check[self.start[0]][self.start[1]]=True
+  def DFS(self):
+    cur_energy = self.energy
+    stack = []
+    stack.append((self.start, cur_energy))
+    visited = []    
     self.came_from = {}
-    while len(stack)>0 :
-      curr_node = stack.pop()
-      if  curr_node == self.goal :
-            print(colored("Finded path!", "green"))
-            path = self.trace_path()
-            self.grid.draw(path=path)
+    while len(stack) > 0:
+      curr = stack.pop()      
+      cur_node, cur_energy = curr
+      visited.append(curr)
+      if cur_energy > 0:
+        for next_node in self.grid.neighbors(cur_node):
+          if next_node in self.grid.material:
+              new_energy = self.energy
+          else:
+              new_energy = cur_energy - 1
+          if next_node == self.goal:
+            self.lastEnergy = new_energy
+            self.came_from[(self.goal, self.lastEnergy)] = (cur_node, cur_energy)
             return True
-      for next_node in self.grid.neighbors(curr_node) :        
-        if check[next_node[0]][next_node[1]] is False :
-          check[next_node[0]][next_node[1]]=True
-          stack.append(next_node)
-          self.came_from[next_node] = curr_node
-    print(colored("Can not find path.", "red"))
+          elif (next_node, new_energy) not in visited:            
+            stack.append((next_node, new_energy))
+            self.came_from[(next_node, new_energy)] = (cur_node, cur_energy)
     return False
 
   def UCS(self):
-    pqueue = []# priority_queue. Khai báo hàng đợi ưu tiên <chi phí, đỉnh>
-        heapq.heappush(pqueue, (0, self.start)) # Thêm vào cấu trúc vung đống Heap. chi phí của đỉnh đầu tiên strart=0
-        cost_so_far = {self.start: 0} # chi phí đến đỉnh hiện tại -> start -> chi phí =0
-        while len(pqueue) > 0: # Khi hàng đợi không rỗng
-          curr_n = heapq.heappop(pqueue) # Lấy ra đỉnh tiếp theo trong cấu trúc Heap <chi phí, đỉnh>
-          curr_cost, curr_node = curr_n  #Tuple<chi phí, đỉnh> = curr. curr_cost-> chi phí, curr_node -> đỉnh đang xét
-          if curr_node == self.goal: # Khi đỉnh đang xét là goal -> Tìm thấy đường đi
-            print(colored("Finded path!", "green"))
-            path = self.trace_path()
-            self.grid.draw(path=path)
-            return True
-          for next_node in self.grid.neighbors(curr_node): # Duyệt lần lượt các định còn lại
-              # Tạo ra chi phí mới = Tổng chi phí hiện tại + Chi phí của node tiếp theo
-              new_cost =  curr_cost + self.grid.A[next_node[0]][next_node[1]]
-            # Nếu đỉnh đang xét chưa được tính chi phí HOẶC có chi phí nhỏ hơn chi phí đang xét 
-              if next_node not in cost_so_far or new_cost < cost_so_far[next_node]:
-                heapq.heappush(pqueue, (new_cost, next_node)) # đưa chi phí mới vào Heap
-                cost_so_far[next_node] = new_cost # cập nhật chi phí mới cho đỉnh đang xét
-                self.came_from[next_node] = curr_node
-        # Không tìm thấy đỉnh = goal 
-        print(colored("Can not find path.", "red"))
-        return False
+    pass
 
+A = np.zeros((10, 10))
+W = [(0,3), (1,5), (2,2), (2,5), (3,1), (3,7), (4,4), (5,1), (5,6), (6,2), (6,3), (7,5), (7,6), (7,8), (8,0), (8,3), (8,5), (9,4)]
+M = [(0,9),(1,4),(4,2),(4,8),(6,4), (7,7),(9,0)]
+E = 5
+g = MapTraffic(A, W, M)
 
+print("Matrix: ")
+g.draw()
+
+print("Maze matrix with weight: ")
+g.draw(show_weight=True)
+
+search = SearchAlg(g, (0,0), E)
+print("----DFS----")
+search.DFS()
+g.draw(show_weight=True, path=search.trace_path())
