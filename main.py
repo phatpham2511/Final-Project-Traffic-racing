@@ -104,31 +104,33 @@ class SearchAlg:
 
   def a_star(self):
     open_list = PriorityQueue()
-    gScore = {self.start: 0}  # lưu giá trị G của mỗi đỉnh
+    gScore = {(self.start, self.energy): 0}
     fScore_start = self.heuristic(self.start, self.goal) # f = g + h = 0 + heu(start, goal)
-    open_list.push(fScore_start, self.start) # push(value, label_node)
+    open_list.push(fScore_start, (self.start, self.energy))
     self.came_from = {} # dùng để lưu dấu đường đi
 
     while not open_list.is_empty():
-        curr = open_list.pop()  # lấy đỉnh curr có fScore nhỏ nhất
-        # print(curr) # trả về (curr_fScore, curr_node)
-        curr_fScore, curr_node = curr
+        item = open_list.pop()
+        curr_fScore, curr = item
+        curr_node, curr_energy = curr
         if curr_node == self.goal:
-            print(colored("Finded path!", "green"))
-            path = self.trace_path()
-            self.grid.draw(path=path)
             return True
-        for next_node in self.grid.neighbors(curr_node):
-            new_g = gScore[curr_node] + self.grid.A[next_node[0]][next_node[1]]  # next_g = curr_g + A[curr_node->next_node]
-            if (next_node not in gScore) or (new_g < gScore[next_node]): 
-                gScore[next_node] = new_g
-                fScore_next_node = gScore[next_node] + self.heuristic(next_node, self.goal)  # Khác với UCS là có thêm hàm Heuristic ở đây!
-                open_list.push(fScore_next_node, next_node)
-                self.came_from[next_node] = curr_node
+        if curr_energy > 0:
+          for next_node in self.grid.neighbors(curr_node):
+              if next_node in self.grid.material:
+                new_energy = self.energy
+              else:
+                new_energy = curr_energy - 1
+              new_g = gScore[(curr_node, curr_energy)] + 1
+              if ((next_node, new_energy) not in gScore) or (new_g < gScore[(next_node, new_energy)]): 
+                  gScore[(next_node, new_energy)] = new_g
+                  fScore_next_node = gScore[(next_node, new_energy)] + self.heuristic(next_node, self.goal)
 
-        print(f"After search at f{curr_node}: f{open_list.queue}")
-    
-    print(colored("Can not find path.", "red"))
+                  if next_node == self.goal:
+                    self.lastEnergy = new_energy
+                  open_list.push(fScore_next_node, (next_node, new_energy))
+                  self.came_from[(next_node, new_energy)] = (curr_node, curr_energy)
+        
     return False
 
   def BFS(self):
@@ -220,6 +222,6 @@ print("Maze matrix with weight: ")
 g.draw(show_weight=True)
 
 search = SearchAlg(g, (0,0), E)
-print("----UCS----")
-search.UCS()
+print("----A_Star----")
+search.a_star()
 g.draw(show_weight=True, path=search.trace_path())
