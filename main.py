@@ -132,26 +132,28 @@ class SearchAlg:
     return False
 
   def BFS(self):
-    queue=[self.start]
-    check = [[0 for x in range(self.grid.m)] for y in range(self.grid.n)] 
-    for i in range(self.grid.m):
-      for j in range(self.grid.n) :
-        check[j][i]=False
-    check[self.start[0]][self.start[1]]=True
+    cur_energy = self.energy
+    queue = []
+    queue.append((self.start, cur_energy))
+    visited = []    
     self.came_from = {}
-    while len(queue)>0 :
-      curr_node = queue.pop(0)
-      if  curr_node == self.goal :
-            print(colored("Finded path!", "green"))
-            path = self.trace_path()
-            self.grid.draw(path=path)
+    while len(queue) > 0:
+      curr = queue.pop(0)      
+      cur_node, cur_energy = curr
+      visited.append(curr)
+      if cur_energy > 0:
+        for next_node in self.grid.neighbors(cur_node):
+          if next_node in self.grid.material:
+              new_energy = self.energy
+          else:
+              new_energy = cur_energy - 1
+          if next_node == self.goal:
+            self.lastEnergy = new_energy
+            self.came_from[(self.goal, self.lastEnergy)] = (cur_node, cur_energy)
             return True
-      for next_node in self.grid.neighbors(curr_node) :        
-        if check[next_node[0]][next_node[1]] is False :
-          check[next_node[0]][next_node[1]]=True
-          queue.append(next_node)
-          self.came_from[next_node] = curr_node
-    print(colored("Can not find path.", "red"))
+          elif (next_node, new_energy) not in visited:            
+            queue.append((next_node, new_energy))
+            self.came_from[(next_node, new_energy)] = (cur_node, cur_energy)
     return False
   
   def DFS(self):
