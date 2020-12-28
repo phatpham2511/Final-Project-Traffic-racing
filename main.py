@@ -4,21 +4,21 @@ from termcolor import colored
 import math
 import numpy as np
 
-class PriorityQueue:
+class PriorityQueue: # hàng đợi ưu tiên
   def __init__(self):
     self.queue = []
   
-  def push(self, value, label):
+  def push(self, value, label): # đưa giá trị vào hàng đợi
     heapq.heappush(self.queue, (value, label))
   
-  def pop(self):
+  def pop(self): # lấy giá trị ra khỏi hàng đợi
     return heapq.heappop(self.queue)
   
-  def is_empty(self):
+  def is_empty(self): # kiểm tra khi hàng đợi rỗng
     # print(self.q)
     return len(self.queue) == 0
 
-class MapTraffic:
+class MapTraffic: # tạo bản đồ, các tham số truyền vào: kích thước, tường, các trạm nhiên liệu
   def __init__(self, atlas, walls, material):
     self.n = len(atlas)
     self.m = len(atlas[0])
@@ -26,17 +26,17 @@ class MapTraffic:
     self.walls = walls
     self.material = material
 
-  def in_bounds(self, p):
+  def in_bounds(self, p): # kiểm tra bước có thể đi nằm trong phạm vi của bản đồ
     x,y  = p
     return x >=0 and y>=0 and x<self.n and y<self.m
 
-  def passable(self, p):
+  def passable(self, p): # kiểm tra có phải là tường
     for wall_pos in self.walls:
       if wall_pos == p:
         return False
     return True
   
-  def neighbors(self, p):
+  def neighbors(self, p): # giá trị bước đi xung quanh
     x, y = p
     neighbors = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
     valid_neighbors = []
@@ -45,7 +45,7 @@ class MapTraffic:
         valid_neighbors.append(pos)
     return valid_neighbors
 
-  def draw(self, show_weight=False, path=[]):
+  def draw(self, show_weight=False, path=[]): # vẽ ra bản đồ, $: trạm nhiên liệu, +: bước đi, #: tường
     for i in range(self.n):
       for j in range(self.m):
         if (i,j) in path:
@@ -77,8 +77,8 @@ class MapTraffic:
       print()
 
 
-class SearchAlg:
-  def __init__(self, grid, start, energy):
+class SearchAlg: # Lớp tìm kiếm
+  def __init__(self, grid, start, energy): # khởi tạo lớp
     self.grid = grid
     self.start = start
     self.goal = (grid.n - 1, grid.m - 1)
@@ -86,7 +86,7 @@ class SearchAlg:
     self.lastEnergy = 0
     self.came_from = {}
 
-  def trace_path(self):
+  def trace_path(self): # lưu lại thông tin đường đi
     cur_node =  self.goal
     cur_energy = self.lastEnergy
     path = []
@@ -99,10 +99,10 @@ class SearchAlg:
     path.reverse()
     return path
 
-  def heuristic(self,p1, p2, heu_type="Manhanttan"):
+  def heuristic(self,p1, p2, heu_type="Manhanttan"): # dự đoán chi phí đến đích
       return abs(p1[0]-p2[0]) + abs(p1[1]-p2[1])
 
-  def a_star(self):
+  def a_star(self): # thuật toán a start
     open_list = PriorityQueue()
     gScore = {(self.start, self.energy): 0}
     fScore_start = self.heuristic(self.start, self.goal) # f = g + h = 0 + heu(start, goal)
@@ -120,7 +120,7 @@ class SearchAlg:
               if next_node in self.grid.material:
                 new_energy = self.energy
               else:
-                new_energy = curr_energy - 1
+                new_energy = curr_energy - 1 # mỗi khi đi 1 bước, nguyên liệu sẽ giảm 1
               new_g = gScore[(curr_node, curr_energy)] + 1
               if ((next_node, new_energy) not in gScore) or (new_g < gScore[(next_node, new_energy)]): 
                   gScore[(next_node, new_energy)] = new_g
